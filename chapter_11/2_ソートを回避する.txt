@@ -1,0 +1,15 @@
+ソートは実は頻繁に、暗黙に行われている
+
+ソートが発生する代表的な演算
+  ・GROUP BY 句
+  ・ORDER BY 句
+  ・集約関数(SUM, COUNT, AVG, MAX, MIN)
+  ・DISTINCT
+  ・集合演算子(UNION, INTERSECT, EXCEPT)
+  ・ウィンドウ関数(RANK, ROW_NUMBERなど)
+
+メモリが足りなくなり、ストレージを使ったソートが行われるようになると、
+パフォーマンスが大きく低下する。
+
+
+・集合演算子のALLオプションをうまく使う

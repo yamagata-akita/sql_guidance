@@ -1,0 +1,37 @@
+・サブクエリを引数に取る場合、INよりもEXISTSを使う
+
+-- 遅い
+SELECT *
+  FROM Class_A
+ WHERE id IN (SELECT id FROM Class_B);
+
+-- 速い
+SELECT *
+  FROM Class_A A
+ WHERE EXISTS
+  (SELECT *
+     FROM Class_B B
+    WHERE A.id = B.id);
+
+
+EXISTSのほうが速い理由
+1. もし結合キー(この場合はid)にインデックスが張られていれば、Class_Bテーブルの実表は見に行かず、
+   インデックスを参照するのみですむ
+
+2. EXISTS句は1行でも条件に合致する行を見つけたらそこで検索を打ち切るため、INのように
+   全表検索の必要がない。(NOT EXISTSのときも同様)
+
+コードの可読性はIN句のほうが高い
+
+
+・サブクエリを引数に取る場合、INよりも結合を使う
+
+EXISTSだけだなく、結合に置き換える方法もある
+
+-- INを結合で代用
+SELECT A.id, A.name
+  FROM Class_A A INNER JOIN Class_B B
+    ON A.id = B.id;
+
+こうすることで、少なくともどちらかのテーブルのid列のインデックスが利用できる。
+サブクエリがなくなったため、中間テーブルも作られない。
