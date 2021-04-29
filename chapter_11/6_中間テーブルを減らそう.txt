@@ -1,0 +1,54 @@
+中間テーブルを不用意に多用すると、パフォーマンス低下の原因となる。
+
+中間テーブルの問題点
+1. データを展開するためにメモリ(場合によってはストレージ)を消費する
+2. 元テーブルに存在したインデックスを使うのが難しくなる
+
+
+・HAVING句を活用する
+  集約した結果に対する条件は、HAVING句を使って設定するのが原則
+
+  -- ☓(TMPが無駄な中間テーブル)
+  SELECT *
+    FROM (SELECT sale_date, MAX(quantity) AS max_qty
+            FROM SalesHistory
+           GROUP BY sale_date) TMP
+  WHERE MAX_qty >= 10;
+
+  -- ○(HAVINGを用いる)
+  SELECT sale_date, MAX(quantity)
+    FROM SalesHistory
+   GROUP BY sale_date
+  HAVING MAX(quantity) >= 10;
+
+
+・IN述語で複数のキーを利用する場合は、一箇所にまとめる
+
+  行比較の機能を用い、=, <, >といった比較述語やINの引数に、
+  スカラ値ではなく値のリストを取る。
+
+  -- 改良前
+  SELECT id, state, city
+    FROM Addresses1 A1
+   WHERE state IN (SELECT state
+                     FROM Addresses2 A2
+                    WHERE A1.id = A2.id)
+    AND city IN (SELECT city
+                   FROM Addresses2 A2
+                  WHERE A1.id = A2.id);
+  
+  -- 改良後(キーを結合して1つにする)
+  SELECT *
+    FROM Addresses1 A1
+   WHERE id || state || city IN (SELECT id || state || city
+                                   FROM Addresses2 A2);
+  
+  行比較をサポートしているDBなら、次のように列のペアをINの引数に取る書き方もできる
+
+  SELECT *
+    FROM Addresses1 A1
+   WHERE (id, state, city) IN (SELECT id, state, city
+                                 FROM Addresses A2);
+
+
+・集約よりも結合を先に行う

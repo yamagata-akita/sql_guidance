@@ -1,0 +1,26 @@
+-- 集約したあとに、HAVING句でフィルタリング
+SELECT sale_date, SUM(quantity)
+  FROM SalesHistory
+ GROUP BY sale_date
+HAVING sale_date = '2007-10-01';
+
+-- 集約する前にWHERE句でフィルタリング
+SELECT sale_date, SUM(quantity)
+  FROM SalesHistory
+ WHERE sale_date = '2007-10-01'
+ GROUP BY sale_date;
+
+これら2つのクエリは同じ結果を返すが、後者のほうが効率よく動作する。
+理由
+1. GROUP BY句による集約はソートやハッシュの演算を行うので、
+   事前に行数を絞り込んだほうがソートの不可が軽減される。
+
+2. うまくいけばWHERE句の条件でインデックスが利用できる
+   sale_dateはカーディナリティが高い列っぽい→インデックスがあれば絞り込みが効率的に行われる
+
+
+・GROUP BY句とORDER BY句でインデックスを使う
+
+ORDER BY句やGROUP BY句は普通、並び替えのためのソートを行う。
+インデックスの存在する列をキーに指定することで、ソートのための検索を高速化することができる。
+特にユニークインデックスを持つ列を指定した場合、ソート自体をスキップできることもある。

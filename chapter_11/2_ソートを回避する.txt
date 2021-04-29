@@ -13,3 +13,44 @@
 
 
 ・集合演算子のALLオプションをうまく使う
+
+SQLはUNION,INTERSECT,EXCEPTという3つの集合演算子を持っている
+UNION     : 論理和
+INTERSECT : 論理積
+EXCEPT    : 差
+これらは普通に使うと必ず重複排除のためのソートを行う
+
+SELECT * FROM Class_A
+UNION
+SELECT * FROM Class_B;
+
+重複を気にしなくて良い場合、または重複が発生しないことが事前に明らかな場合は、
+UNIONの代わりにUNION ALLを使う。
+
+SELECT * FROM Class_A
+UNION ALL
+SELECT * FROM Class_B;
+
+
+・DISTINCTをEXISTS句で代用する
+
+2つのテーブルを結合した結果を一意にするためにDISTINCTを使っている場合、
+EXISTSを代用することでソートを回避することができる。
+
+
+1対多の結合のため、重複が出るSQL(INNER JOINの場合)→DISTINCTを使わなければならない
+
+SELECT DISTINCT I.item_no
+  FROM Items I INNER JOIN SalesHistory HS
+    ON I.item_no = SH.item_no;
+
+
+EXISTSならDISTINCTによるソートを回避できる
+EXISTSは結合に劣らず高速に動作するためデメリットがない
+
+SELECT I.item_no
+  FROM Items I
+WHERE EXISTS (SELECT *
+                FROM SalesHistory SH
+               WHERE I.item_no = SH.item_no);
+

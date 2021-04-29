@@ -1,0 +1,109 @@
+インデックス => C言語のポインタ配列のようなもの
+サイズの大きなオブジェクトの配列を検索するより、サイズの小さなポインタを
+検索したほうが効率が良い、ということ。
+
+インデックスを使っているつもりで、実際はテーブルを全件検索している例
+
+
+・索引列に加工を行っている
+
+  -- col_1のインデックスが使われない
+  SELECT * FROM SomeTable
+    WHERE col_1 * 1.1 > 100;
+
+  -- 正
+  SELECT * FROM SomeTable
+    WHERE col_1 > 100 / 1.1;
+
+  -- 左辺に関数を適用してもインデックスは利用されない
+  SELECT * FROM SomeTable
+    WHERE SUBSTR(col_1, 1, 1) = 'a';
+
+
+・インデックス列にNULLが存在する
+  IS NULLやIS NOT NULLを使用するとインデックスが使用されなかったり、
+  NULLが多い列ではインデックスが利用できなかったりと制限を受けることがある
+
+  SELECT * FROM SomeTable WHERE col_1 IS NULL;
+
+  --IS NOT NULLの代用案
+  SELECT * FROM SomeTable WHERE col_1 > 0;
+
+  このようにすれば、NULLの行だけ「col_1 > NULL」がunknownに評価され、選択されない。
+
+
+・否定形を使っている
+  ・<>
+  ・!=
+  ・NOT IN
+
+  これらを用いるとインデックスが利用できない
+  -- 例
+  SELECT * FROM SomeTable WHERE col_1 <> 100;
+
+
+・ORを使っている
+  
+  col_1とcol_2に別々の索引がある場合、または(col_1, col_2)に複合索引を張っている場合のいずれも、
+  ORを使って条件を結合すると、インデックスが利用できなくなるか、利用できてもANDに比べると
+  非効率な検索になる
+
+  -- 例
+  SELECT * FROM SomeTable WHERE col_1 > 100 OR col_2 = 'abc';
+
+  どうしてもOR条件を使用したい場合、こうした用途に向いたビットマップインデックスがある。
+  ただし、このインデックスは更新コストが高くなるデメリットを抱えており、使いどころが
+  限定される。(オンラインの更新処理がないBI/DWH向けとされている)
+
+
+・複合索引の場合に、列の順番を間違えている
+  (col_1, col_2, col_3)に対してこの順番で複合インデックスが張られている場合
+
+  -- ○
+  SELECT * FROM SomeTable WHERE col_1 = 10 AND col_2 = 100 AND col_3 = 500;
+
+  -- ○
+  SELECT * FROM SomeTable Where col_1 = 10 AND col_2 = 100;
+  
+  -- ☓
+  SELECT * FROM SomeTable Where col_1 = 10 AND col_3 = 100;
+
+  -- ☓
+  SELECT * FROM SomeTable Where col_2 = 100 AND col_3 = 500;
+
+  必ず最初の列(col_1)を先頭に書く必要があり、順番も崩してはならない。
+  中にはそれでもインデックスを利用できるDBもあるが、順番が正しい場合に比べて
+  パフォーマンスは落ちる。
+  このルールが守れない場合は、別々のインデックスに分割することを検討する。
+
+
+・後方一致、または中間一致のLIKE述語を用いている
+
+  LIKE述語を使うときは、前方一致検索のみ索引が使用される
+
+  -- ☓
+  SELECT * FROM SomeTable WHERE col_1 LIKE '%a';
+
+  -- ☓
+  SELECT * FROM SomeTable WHERE col_1 LIKE '%a%';
+
+  -- ○
+  SELECT * FROM SomeTable WHERE col_1 LIKE 'a%';
+
+
+・暗黙の型変換を行っている
+
+  # col_1は文字列型で定義されている
+  --　☓
+  SELECT * FROM SomeTable WHERE col_1 = 10;
+
+  -- ○
+  SELECT * FROM SomeTable WHERE col_1 = '10';
+
+  -- ○
+  SELECT * FROM SomeTable WHERE col_1 = CAST(10, AS CHAR(2));
+
+  暗黙の型変換はオーバーヘッドを発生させ、インデックスまで使用不可になる。
+  明示的な型変換を行うこと！
+
+
