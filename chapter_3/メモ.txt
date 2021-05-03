@@ -1,0 +1,65 @@
+自己結合
+
+キーワード
+・物理
+・論理
+・これら2つのレイヤの跳躍
+
+
+組み合わせの種類: 順序対と非順序対
+・順序対   並び順を意識       <1, 2> と表記
+・非順序対 並び順を意識しない {1, 2} と表記
+
+
+-- 重複順列を得るSQL
+SELECT P1.name AS name_1, P2.name AS name_2
+  FROM Products P1 CROSS JOIN Products P2;
+
+クロス結合は結合条件を指定せず、2つのテーブルを総当りで
+すべてのレコードの組み合わせを列挙する
+
+
+冗長な集合を排除する変更
+
+同一要素の組み合わせの除外
+-- 順列(順序対)を得るSQL
+SELECT P1.name AS name_1, P2.name AS name_2
+  FROM Products P1 INNER JOIN Products P2
+    ON P1.name <> P2.name;
+
+-- 組み合わせ(非順序対)を得るSQL
+SELECT P1.name AS name_1, P2.name AS name_2
+  FROM Products P1 INNER JOIN Products P2
+    ON P1.name > P2.name;
+
+-- 組み合わせを得るSQL: 3列への拡張
+SELECT P1.name AS name_1, P2.name AS name_2, P3.name as name_3
+  FROM Products P1
+    INNER JOIN Products P2
+      ON P1.name > P2.name
+        INNER JOIN Products P3
+          ON P2.name > P3.name;
+
+「=」以外の比較演算子を使って行う結合を非等値結合と呼ぶ
+
+
+重複の削除
+自己相関サブクエリを使って重複を削除する
+
+-- 重複行を削除するSQLその1: 極値関数の利用(MySQLではうまく行かず)
+DELETE FROM Products P1
+  WHERE id < ( SELECT id
+                 FROM
+                 ( SELECT MAX(P2.id)
+                     FROM Products P2
+                    WHERE P1.name = P2.name
+                      AND P1.price = P2.price ) tmp );
+
+-- 重複業を削除するSQLその2: 非等値結合の利用(こちらはMySQLでも可能)
+DELETE FROM Products P1
+  WHERE EXISTS ( SELECT *
+                   FROM
+                   (SELECT * FROM Products P2
+                      WHERE P1.name = P2.name
+                        AND P1.price = P2.price
+                        AND P1.id < P2.id) tmp);
